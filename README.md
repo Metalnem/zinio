@@ -1,2 +1,3 @@
-# zinio
-Zinio DRM removal (work in progress)
+# Zinio DRM removal
+
+Work in progress.
