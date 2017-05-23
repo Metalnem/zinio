@@ -1,0 +1,22 @@
+POST /newsstandServices/authenticateUser HTTP/1.1
+Host: services.zinio.com:443
+Content-Type: text/xml
+Connection: close
+
+<?xml version="1.0" encoding="UTF-8"?>
+<zinioServiceRequest>
+  <requestHeader>
+    <authorization>
+      <login>user@example.org</login>
+      <password>password</password>
+    </authorization>
+    <device>
+      <deviceId>D6B50079-BE65-44D6-A961-8A184AA81077</deviceId>
+      <installationUUID>84A8E36D-DF7F-4D7E-9824-F793AFB93207</installationUUID>
+    </device>
+    <application>
+      <applicationName>Zinio iReader</applicationName>
+      <applicationVersion>20160314</applicationVersion>
+    </application>
+  </requestHeader>
+</zinioServiceRequest>
