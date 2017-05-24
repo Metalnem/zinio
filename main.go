@@ -1,10 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"os"
 )
+
+const baseURL = "https://services.zinio.com"
 
 type version struct {
 	Key   string `xml:"key,attr"`
@@ -83,12 +89,31 @@ func makeRequest(p parameters) zinioServiceRequest {
 }
 
 func main() {
-	req := makeRequest(parameters{})
-	b, err := xml.MarshalIndent(req, "", "  ")
+	p := parameters{
+		login:    os.Getenv("ZINIO_EMAIL"),
+		password: os.Getenv("ZINIO_PASSWORD"),
+	}
+
+	req := makeRequest(p)
+	b, err := xml.Marshal(req)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(string(b))
+	r := bytes.NewReader(b)
+	resp, err := http.Post(baseURL+"/newsstandServices/authenticateUser", "text/xml", r)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer resp.Body.Close()
+	b, err = ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Print(string(b))
 }
