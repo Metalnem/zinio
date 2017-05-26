@@ -2,15 +2,24 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
-const baseURL = "https://services.zinio.com"
+const (
+	baseURL     = "https://services.zinio.com/newsstandServices/"
+	httpTimeout = 30 * time.Second
+
+	deviceID         = "A6B50079-BE65-44D6-A961-8A184AA81077"
+	installationUUID = "84A8E36D-DF7F-4D7E-9824-F793AFB93207"
+)
 
 type version struct {
 	Key   string `xml:"key,attr"`
@@ -45,18 +54,36 @@ type zinioServiceRequest struct {
 	LibraryIssueDataRequest *libraryIssueDataRequest `xml:"libraryIssueDataRequest,omitempty"`
 }
 
+type authenticateUserResponse struct {
+	ProfileID string `xml:"profileId"`
+}
+
+type issuePackingList struct {
+	SingleIssue []struct {
+		PubID         string `xml:"pubId"`
+		IssueTitle    string `xml:"issueTitle"`
+		IssueID       string `xml:"issueId"`
+		HostName      string `xml:"hostName"`
+		IssueAssetDir string `xml:"issueAssetDir"`
+		TrackingCode  struct {
+			Init  string `xml:"init,attr"`
+			Value string `xml:",chardata"`
+		} `xml:"trackingCode"`
+		NumberOfPages string `xml:"numberOfPages"`
+	} `xml:"singleIssue"`
+}
+
 type zinioServiceResponse struct {
 	XMLName        xml.Name `xml:"zinioServiceResponse"`
 	ResponseStatus struct {
-		Status      string `xml:"responseStatus>status"`
+		Status      string `xml:"status"`
 		ErrorDetail struct {
 			Code    string `xml:"code"`
 			Message string `xml:"message"`
 		} `xml:"errorDetail"`
 	} `xml:"responseStatus"`
-	AuthenticateUserResponse struct {
-		ProfileID string `xml:"profileId"`
-	} `xml:"authenticateUserResponse"`
+	AuthenticateUserResponse authenticateUserResponse `xml:"authenticateUserResponse"`
+	IssuePackingList         issuePackingList         `xml:"issuePackingList"`
 }
 
 type parameters struct {
@@ -69,15 +96,16 @@ type parameters struct {
 
 func makeRequest(p parameters) zinioServiceRequest {
 	var req zinioServiceRequest
+	h := &req.RequestHeader
 
-	req.RequestHeader.Authorization.Login = p.login
-	req.RequestHeader.Authorization.Password = p.password
+	h.Authorization.Login = p.login
+	h.Authorization.Password = p.password
 
-	req.RequestHeader.Device.ProfileID = p.profileID
-	req.RequestHeader.Device.DeviceID = "A6B50079-BE65-44D6-A961-8A184AA81077"
-	req.RequestHeader.Device.DeviceName = "iPhone"
-	req.RequestHeader.Device.InstallationUUID = "84A8E36D-DF7F-4D7E-9824-F793AFB93207"
-	req.RequestHeader.Device.PlatformDescription = "iPhone7,2"
+	h.Device.ProfileID = p.profileID
+	h.Device.DeviceID = deviceID
+	h.Device.DeviceName = "iPhone"
+	h.Device.InstallationUUID = installationUUID
+	h.Device.PlatformDescription = "iPhone7,2"
 
 	versions := []version{
 		{"application", "20160314"},
@@ -88,9 +116,9 @@ func makeRequest(p parameters) zinioServiceRequest {
 		{"adSupport", "1.0"},
 	}
 
-	req.RequestHeader.Application.ApplicationName = "Zinio iReader"
-	req.RequestHeader.Application.ApplicationVersion = "20160314"
-	req.RequestHeader.Application.Versions = versions
+	h.Application.ApplicationName = "Zinio iReader"
+	h.Application.ApplicationVersion = "20160314"
+	h.Application.Versions = versions
 
 	if p.pubID != "" && p.issueID != "" {
 		req.LibraryIssueDataRequest = &libraryIssueDataRequest{
@@ -102,35 +130,101 @@ func makeRequest(p parameters) zinioServiceRequest {
 	return req
 }
 
-func main() {
-	p := parameters{
-		login:     os.Getenv("ZINIO_EMAIL"),
-		password:  os.Getenv("ZINIO_PASSWORD"),
-		profileID: "8751702194",
-		pubID:     "373124878",
-		issueID:   "416413259",
-	}
+func post(ctx context.Context, query string, p parameters) (*zinioServiceResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, httpTimeout)
+	defer cancel()
 
 	req := makeRequest(p)
 	b, err := xml.Marshal(req)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	r := bytes.NewReader(b)
-	resp, err := http.Post(baseURL+"/newsstandServices/issueData", "text/xml", r)
+	resp, err := http.Post(baseURL+query, "text/xml", r)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	defer resp.Body.Close()
 	b, err = ioutil.ReadAll(resp.Body)
 
 	if err != nil {
+		return nil, err
+	}
+
+	var res zinioServiceResponse
+
+	if err = xml.Unmarshal(b, &res); err != nil {
+		return nil, err
+	}
+
+	message := res.ResponseStatus.ErrorDetail.Message
+
+	if message != "" {
+		return nil, errors.New(message)
+	}
+
+	return &res, nil
+}
+
+func authenticateUser(ctx context.Context, login, password string) (*authenticateUserResponse, error) {
+	p := parameters{
+		login:    login,
+		password: password,
+	}
+
+	resp, err := post(ctx, "authenticateUser", p)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp.AuthenticateUserResponse, nil
+}
+
+func issueData(ctx context.Context, login, password, profileID, pubID, issueID string) (*issuePackingList, error) {
+	p := parameters{
+		login:     login,
+		password:  password,
+		profileID: profileID,
+		pubID:     pubID,
+		issueID:   issueID,
+	}
+
+	resp, err := post(ctx, "issueData", p)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp.IssuePackingList, nil
+}
+
+func main() {
+	ctx := context.Background()
+
+	login := os.Getenv("ZINIO_EMAIL")
+	password := os.Getenv("ZINIO_PASSWORD")
+
+	auth, err := authenticateUser(ctx, login, password)
+
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Print(string(b))
+	issue, err := issueData(ctx, login, password, auth.ProfileID, "373124878", "416413259")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	code := issue.SingleIssue[0].TrackingCode
+	iv := code.Init
+	ciphertext := code.Value
+
+	fmt.Println(iv)
+	fmt.Println(ciphertext)
 }
