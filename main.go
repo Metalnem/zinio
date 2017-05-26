@@ -45,6 +45,20 @@ type zinioServiceRequest struct {
 	LibraryIssueDataRequest *libraryIssueDataRequest `xml:"libraryIssueDataRequest,omitempty"`
 }
 
+type zinioServiceResponse struct {
+	XMLName        xml.Name `xml:"zinioServiceResponse"`
+	ResponseStatus struct {
+		Status      string `xml:"responseStatus>status"`
+		ErrorDetail struct {
+			Code    string `xml:"code"`
+			Message string `xml:"message"`
+		} `xml:"errorDetail"`
+	} `xml:"responseStatus"`
+	AuthenticateUserResponse struct {
+		ProfileID string `xml:"profileId"`
+	} `xml:"authenticateUserResponse"`
+}
+
 type parameters struct {
 	login     string
 	password  string
@@ -90,8 +104,11 @@ func makeRequest(p parameters) zinioServiceRequest {
 
 func main() {
 	p := parameters{
-		login:    os.Getenv("ZINIO_EMAIL"),
-		password: os.Getenv("ZINIO_PASSWORD"),
+		login:     os.Getenv("ZINIO_EMAIL"),
+		password:  os.Getenv("ZINIO_PASSWORD"),
+		profileID: "8751702194",
+		pubID:     "373124878",
+		issueID:   "416413259",
 	}
 
 	req := makeRequest(p)
@@ -102,7 +119,7 @@ func main() {
 	}
 
 	r := bytes.NewReader(b)
-	resp, err := http.Post(baseURL+"/newsstandServices/authenticateUser", "text/xml", r)
+	resp, err := http.Post(baseURL+"/newsstandServices/issueData", "text/xml", r)
 
 	if err != nil {
 		log.Fatal(err)
