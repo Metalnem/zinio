@@ -3,6 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/base64"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -15,10 +18,14 @@ import (
 
 const (
 	baseURL     = "https://services.zinio.com/newsstandServices/"
-	httpTimeout = 30 * time.Second
+	httpTimeout = 10 * time.Second
 
 	deviceID         = "A6B50079-BE65-44D6-A961-8A184AA81077"
 	installationUUID = "84A8E36D-DF7F-4D7E-9824-F793AFB93207"
+)
+
+var (
+	decryptionKey = []byte("8D}[" + deviceID[0:4] + "i)|z" + installationUUID[0:4])
 )
 
 type version struct {
@@ -39,11 +46,10 @@ type zinioServiceRequest struct {
 			Password string `xml:"password"`
 		} `xml:"authorization"`
 		Device struct {
-			ProfileID           string `xml:"profileId,omitempty"`
-			DeviceID            string `xml:"deviceId"`
-			DeviceName          string `xml:"deviceName"`
-			InstallationUUID    string `xml:"installationUUID"`
-			PlatformDescription string `xml:"platformDescription"`
+			ProfileID        string `xml:"profileId,omitempty"`
+			DeviceID         string `xml:"deviceId"`
+			DeviceName       string `xml:"deviceName"`
+			InstallationUUID string `xml:"installationUUID"`
 		} `xml:"device"`
 		Application struct {
 			ApplicationName    string    `xml:"applicationName"`
@@ -103,22 +109,11 @@ func makeRequest(p parameters) zinioServiceRequest {
 
 	h.Device.ProfileID = p.profileID
 	h.Device.DeviceID = deviceID
-	h.Device.DeviceName = "iPhone"
+	h.Device.DeviceName = "Windows 8 Device"
 	h.Device.InstallationUUID = installationUUID
-	h.Device.PlatformDescription = "iPhone7,2"
 
-	versions := []version{
-		{"application", "20160314"},
-		{"reader", "1.9"},
-		{"storyBasedReader", "1.9"},
-		{"security", "1.0"},
-		{"shop", "1.0"},
-		{"adSupport", "1.0"},
-	}
-
-	h.Application.ApplicationName = "Zinio iReader"
-	h.Application.ApplicationVersion = "20160314"
-	h.Application.Versions = versions
+	h.Application.ApplicationName = "ZinioWin8"
+	h.Application.Versions = []version{{"security", "1.0"}}
 
 	if p.pubID != "" && p.issueID != "" {
 		req.LibraryIssueDataRequest = &libraryIssueDataRequest{
@@ -203,6 +198,31 @@ func issueData(ctx context.Context, login, password, profileID, pubID, issueID s
 	return &resp.IssuePackingList, nil
 }
 
+func decryptPdfPassword(iv64, ciphertext64 string) (string, error) {
+	iv, err := base64.StdEncoding.DecodeString(iv64)
+
+	if err != nil {
+		return "", err
+	}
+
+	ciphertext, err := base64.StdEncoding.DecodeString(ciphertext64)
+
+	if err != nil {
+		return "", err
+	}
+
+	block, err := aes.NewCipher(decryptionKey)
+
+	if err != nil {
+		return "", err
+	}
+
+	mode := cipher.NewCBCDecrypter(block, iv)
+	mode.CryptBlocks(ciphertext, ciphertext)
+
+	return string(ciphertext[:32]), nil
+}
+
 func main() {
 	ctx := context.Background()
 
@@ -222,9 +242,11 @@ func main() {
 	}
 
 	code := issue.SingleIssue[0].TrackingCode
-	iv := code.Init
-	ciphertext := code.Value
+	pdfPassword, err := decryptPdfPassword(code.Init, code.Value)
 
-	fmt.Println(iv)
-	fmt.Println(ciphertext)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(pdfPassword)
 }
