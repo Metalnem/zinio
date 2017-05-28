@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"golang.org/x/net/context/ctxhttp"
 )
 
 const (
@@ -137,7 +139,7 @@ func post(ctx context.Context, query string, p parameters) (*zinioServiceRespons
 	}
 
 	r := bytes.NewReader(b)
-	resp, err := http.Post(baseURL+query, "text/xml", r)
+	resp, err := ctxhttp.Post(ctx, http.DefaultClient, baseURL+query, "text/xml", r)
 
 	if err != nil {
 		return nil, err
