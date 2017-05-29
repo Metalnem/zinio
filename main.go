@@ -13,9 +13,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"time"
 
 	"github.com/cenkalti/backoff"
+	"github.com/unidoc/unidoc/pdf"
 	"golang.org/x/net/context/ctxhttp"
 )
 
@@ -29,6 +31,9 @@ const (
 
 var (
 	decryptionKey = []byte("8D}[" + deviceID[0:4] + "i)|z" + installationUUID[0:4])
+
+	errDecryptionFailed = errors.New("Failed to decrypt PDF page")
+	errNoPages          = errors.New("No pages found in archive")
 )
 
 // Session contains session data for single authenticated user.
@@ -140,6 +145,10 @@ type parameters struct {
 	profileID string
 	pubID     string
 	issueID   string
+}
+
+type page struct {
+	*bytes.Reader
 }
 
 func makeRequest(p parameters) zinioServiceRequest {
@@ -343,6 +352,83 @@ func (session *Session) GetIssue(ctx context.Context, magazineID, issueID string
 	return &isssue, nil
 }
 
+func downloadPage(ctx context.Context, url string) (page, error) {
+	resp, err := ctxhttp.Get(ctx, http.DefaultClient, url)
+
+	if err != nil {
+		return page{}, err
+	}
+
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return page{}, err
+	}
+
+	r := bytes.NewReader(b)
+	return page{r}, nil
+}
+
+func downloadAllPages(ctx context.Context, issue Issue) ([]page, error) {
+	var pages []page
+
+	for i := 0; i < issue.PageCount; i++ {
+		url := fmt.Sprintf("%spage%d.pdf", issue.URL, i)
+		page, err := downloadPage(ctx, url)
+
+		if err != nil {
+			return nil, err
+		}
+
+		pages = append(pages, page)
+	}
+
+	return pages, nil
+}
+
+func unlockAndMerge(pages []page, password []byte) (*pdf.PdfWriter, error) {
+	w := pdf.NewPdfWriter()
+
+	for _, page := range pages {
+		r, err := pdf.NewPdfReader(page)
+
+		if err != nil {
+			return nil, err
+		}
+
+		ok, err := r.Decrypt(password)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if !ok {
+			return nil, errDecryptionFailed
+		}
+
+		numPages, err := r.GetNumPages()
+
+		if err != nil {
+			return nil, err
+		}
+
+		for i := 0; i < numPages; i++ {
+			page, err := r.GetPage(i + 1)
+
+			if err != nil {
+				return nil, err
+			}
+
+			if err = w.AddPage(page); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return &w, nil
+}
+
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -363,6 +449,8 @@ func main() {
 	}
 
 	for _, magazine := range magazines {
+		os.Mkdir(magazine.Title, 0755)
+
 		for _, issueID := range magazine.Issues {
 			issue, err := session.GetIssue(ctx, magazine.ID, issueID)
 
@@ -370,7 +458,38 @@ func main() {
 				log.Fatal(err)
 			}
 
-			fmt.Printf("%+v\n", issue)
+			pages, err := downloadAllPages(context.Background(), *issue)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			pdf, err := unlockAndMerge(pages, []byte(issue.Password))
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			err = func() (err error) {
+				path := path.Join(magazine.Title+".pdf", issue.Title)
+				file, err := os.Create(path)
+
+				if err != nil {
+					return err
+				}
+
+				defer func() {
+					if cerr := file.Close(); cerr != nil && err == nil {
+						err = cerr
+					}
+				}()
+
+				return pdf.Write(file)
+			}()
+
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 }
