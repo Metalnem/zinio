@@ -471,7 +471,7 @@ func main() {
 			}
 
 			err = func() (err error) {
-				path := path.Join(magazine.Title+".pdf", issue.Title)
+				path := path.Join(magazine.Title, issue.Title+".pdf")
 				file, err := os.Create(path)
 
 				if err != nil {
