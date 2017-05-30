@@ -108,7 +108,7 @@ func downloadAllIssues(ctx context.Context, session *Session, magazines []Magazi
 					return errors.Wrapf(err, "failed to download %s %s", magazine.Title, metadata.Title)
 				}
 
-				if _, err := os.Stat(dir); os.IsNotExist(err) {
+				if f, err := os.Stat(dir); (err == nil && !f.IsDir()) || os.IsNotExist(err) {
 					if err := os.Mkdir(dir, 0755); err != nil {
 						return errors.Wrapf(err, "failed to create directory %s", magazine.Title)
 					}
