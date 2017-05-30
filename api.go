@@ -47,7 +47,13 @@ type Session struct {
 type Magazine struct {
 	ID     MagazineID
 	Title  string
-	Issues []IssueID
+	Issues []IssueMetadata
+}
+
+// IssueMetadata contains ID and title of an issue.
+type IssueMetadata struct {
+	ID    IssueID
+	Title string
 }
 
 // Issue represents single magazine issue.
@@ -311,7 +317,10 @@ func (session *Session) GetMagazines(ctx context.Context) ([]Magazine, error) {
 			magazines[pubID] = mag
 		}
 
-		mag.Issues = append(mag.Issues, IssueID(publication.LibraryIssue.Issue.IssueID))
+		mag.Issues = append(mag.Issues, IssueMetadata{
+			ID:    IssueID(publication.LibraryIssue.Issue.IssueID),
+			Title: publication.LibraryIssue.Issue.Title,
+		})
 	}
 
 	var res []Magazine

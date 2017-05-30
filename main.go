@@ -67,20 +67,20 @@ func downloadAllPages(ctx context.Context, issue *Issue) ([]page, error) {
 
 func downloadAllIssues(ctx context.Context, session *Session, magazines []Magazine) error {
 	for _, magazine := range magazines {
-		for _, issueID := range magazine.Issues {
+		for _, metadata := range magazine.Issues {
+			path := path.Join(magazine.Title, metadata.Title+".pdf")
+
+			if _, err := os.Stat(path); err == nil {
+				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": metadata.Title}).Info("issue already downloaded")
+				continue
+			}
+
 			err := func() error {
-				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": issueID}).Info("downloading issue metadata")
-				issue, err := session.GetIssue(ctx, magazine.ID, issueID)
+				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": metadata.Title}).Info("downloading issue metadata")
+				issue, err := session.GetIssue(ctx, magazine.ID, metadata.ID)
 
 				if err != nil {
 					return err
-				}
-
-				path := path.Join(magazine.Title, issue.Title+".pdf")
-
-				if _, err := os.Stat(path); err == nil {
-					log.WithFields(log.Fields{"magazine": magazine.Title, "issue": issue.Title}).Info("issue already downloaded")
-					return nil
 				}
 
 				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": issue.Title}).Info("downloading issue")
