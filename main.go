@@ -39,7 +39,7 @@ func downloadPage(ctx context.Context, url string) (page, error) {
 	return page{r}, nil
 }
 
-func downloadAllPages(ctx context.Context, issue Issue) ([]page, error) {
+func downloadAllPages(ctx context.Context, issue *Issue) ([]page, error) {
 	ctx, cancel := context.WithTimeout(ctx, downloadTimeout)
 	defer cancel()
 
@@ -64,46 +64,8 @@ func downloadAllPages(ctx context.Context, issue Issue) ([]page, error) {
 	return pages, nil
 }
 
-func downloadIssue(ctx context.Context, session *Session, issue Issue, path string) (err error) {
-	pages, err := downloadAllPages(ctx, issue)
-
-	if err != nil {
-		return errors.Wrapf(err, "failed to download %s", path)
-	}
-
-	pdf, err := unlockAndMerge(pages, []byte(issue.Password))
-
-	if err != nil {
-		return errors.Wrapf(err, "failed to unlock and merge pages for %s", path)
-	}
-
-	file, err := os.Create(path)
-
-	if err != nil {
-		return errors.Wrapf(err, "failed to create %s", path)
-	}
-
-	defer func() {
-		if cerr := file.Close(); cerr != nil && err == nil {
-			err = cerr
-		}
-	}()
-
-	if err = pdf.Write(file); err != nil {
-		return errors.Wrapf(err, "failed to save %s", path)
-	}
-
-	return nil
-}
-
 func downloadAllIssues(ctx context.Context, session *Session, magazines []Magazine) error {
 	for _, magazine := range magazines {
-		if len(magazine.Issues) == 0 {
-			continue
-		}
-
-		os.Mkdir(magazine.Title, 0755)
-
 		for _, issueID := range magazine.Issues {
 			log.WithFields(log.Fields{
 				"magazine": magazine.Title,
@@ -123,10 +85,50 @@ func downloadAllIssues(ctx context.Context, session *Session, magazines []Magazi
 				"issue":    issue.Title,
 			}).Info("downloading issue")
 
-			if err := downloadIssue(ctx, session, *issue, path); err != nil {
+			pages, err := downloadAllPages(ctx, issue)
+
+			if err != nil {
+				return errors.Wrapf(err, "failed to download %s", path)
+			}
+
+			log.WithField("path", path).Info("saving issue")
+
+			if _, err := os.Stat(magazine.Title); os.IsNotExist(err) {
+				if err := os.Mkdir(magazine.Title, 0755); err != nil {
+					return errors.Wrapf(err, "failed to create directory %s", magazine.Title)
+				}
+			}
+
+			if err := save(session, pages, issue.Password, path); err != nil {
 				return err
 			}
 		}
+	}
+
+	return nil
+}
+
+func save(session *Session, pages []page, password string, path string) (err error) {
+	pdf, err := unlockAndMerge(pages, []byte(password))
+
+	if err != nil {
+		return errors.Wrapf(err, "failed to unlock and merge pages for %s", path)
+	}
+
+	file, err := os.Create(path)
+
+	if err != nil {
+		return errors.Wrapf(err, "failed to create %s", path)
+	}
+
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
+
+	if err = pdf.Write(file); err != nil {
+		return errors.Wrapf(err, "failed to save %s", path)
 	}
 
 	return nil
