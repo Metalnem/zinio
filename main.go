@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"flag"
+	"regexp"
+	"strings"
 
 	"io/ioutil"
 	"net/http"
@@ -20,10 +22,20 @@ import (
 
 var (
 	downloadTimeout = 5 * time.Minute
+
+	invalidChars = regexp.MustCompile("[^\\p{L}\\p{N}\\s'!&,!.@-]")
+	whiteSpaces  = regexp.MustCompile("\\s+")
 )
 
 func sanitize(name string) string {
-	return name
+	r := strings.NewReplacer("/", " - ", ":", " - ")
+	s := r.Replace(name)
+
+	s = invalidChars.ReplaceAllString(s, " ")
+	s = whiteSpaces.ReplaceAllString(s, " ")
+	s = strings.TrimSpace(s)
+
+	return s
 }
 
 func downloadPage(ctx context.Context, url string) (page, error) {
@@ -93,16 +105,16 @@ func downloadAllIssues(ctx context.Context, session *Session, magazines []Magazi
 				pages, err := downloadAllPages(ctx, issue)
 
 				if err != nil {
-					return errors.Wrapf(err, "failed to download %s", path)
+					return errors.Wrapf(err, "failed to download %s %s", magazine.Title, metadata.Title)
 				}
-
-				log.WithField("path", path).Info("saving issue")
 
 				if _, err := os.Stat(dir); os.IsNotExist(err) {
 					if err := os.Mkdir(dir, 0755); err != nil {
 						return errors.Wrapf(err, "failed to create directory %s", magazine.Title)
 					}
 				}
+
+				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": metadata.Title}).Info("saving issue")
 
 				if err := save(session, pages, issue.Password, path); err != nil {
 					return err
