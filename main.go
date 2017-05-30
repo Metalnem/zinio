@@ -22,6 +22,10 @@ var (
 	downloadTimeout = 5 * time.Minute
 )
 
+func sanitize(name string) string {
+	return name
+}
+
 func downloadPage(ctx context.Context, url string) (page, error) {
 	resp, err := ctxhttp.Get(ctx, http.DefaultClient, url)
 
@@ -68,7 +72,9 @@ func downloadAllPages(ctx context.Context, issue *Issue) ([]page, error) {
 func downloadAllIssues(ctx context.Context, session *Session, magazines []Magazine) error {
 	for _, magazine := range magazines {
 		for _, metadata := range magazine.Issues {
-			path := path.Join(magazine.Title, metadata.Title+".pdf")
+			dir := sanitize(magazine.Title)
+			file := sanitize(metadata.Title)
+			path := path.Join(dir, file+".pdf")
 
 			if _, err := os.Stat(path); err == nil {
 				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": metadata.Title}).Info("issue already downloaded")
@@ -92,8 +98,8 @@ func downloadAllIssues(ctx context.Context, session *Session, magazines []Magazi
 
 				log.WithField("path", path).Info("saving issue")
 
-				if _, err := os.Stat(magazine.Title); os.IsNotExist(err) {
-					if err := os.Mkdir(magazine.Title, 0755); err != nil {
+				if _, err := os.Stat(dir); os.IsNotExist(err) {
+					if err := os.Mkdir(dir, 0755); err != nil {
 						return errors.Wrapf(err, "failed to create directory %s", magazine.Title)
 					}
 				}
