@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"flag"
 
 	"io/ioutil"
 	"net/http"
@@ -174,10 +175,27 @@ func unlockAndMerge(pages []page, password []byte) (*pdf.PdfWriter, error) {
 }
 
 func main() {
-	ctx := context.Background()
+	var login, password string
 
-	login := os.Getenv("ZINIO_EMAIL")
-	password := os.Getenv("ZINIO_PASSWORD")
+	flag.StringVar(&login, "email", "", "Account email")
+	flag.StringVar(&password, "password", "", "Account password")
+
+	flag.Parse()
+
+	if login == "" {
+		login = os.Getenv("ZINIO_EMAIL")
+	}
+
+	if password == "" {
+		password = os.Getenv("ZINIO_PASSWORD")
+	}
+
+	if login == "" || password == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	ctx := context.Background()
 
 	log.WithField("user", login).Info("logging in")
 	session, err := Login(ctx, login, password)
