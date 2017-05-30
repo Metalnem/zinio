@@ -68,37 +68,45 @@ func downloadAllPages(ctx context.Context, issue *Issue) ([]page, error) {
 func downloadAllIssues(ctx context.Context, session *Session, magazines []Magazine) error {
 	for _, magazine := range magazines {
 		for _, issueID := range magazine.Issues {
-			log.WithFields(log.Fields{"magazine": magazine.Title, "issue": issueID}).Info("downloading issue metadata")
-			issue, err := session.GetIssue(ctx, magazine.ID, issueID)
+			err := func() error {
+				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": issueID}).Info("downloading issue metadata")
+				issue, err := session.GetIssue(ctx, magazine.ID, issueID)
 
-			if err != nil {
-				return err
-			}
-
-			path := path.Join(magazine.Title, issue.Title+".pdf")
-
-			if _, err := os.Stat(path); err == nil {
-				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": issue.Title}).Info("issue already downloaded")
-				continue
-			}
-
-			log.WithFields(log.Fields{"magazine": magazine.Title, "issue": issue.Title}).Info("downloading issue")
-			pages, err := downloadAllPages(ctx, issue)
-
-			if err != nil {
-				return errors.Wrapf(err, "failed to download %s", path)
-			}
-
-			log.WithField("path", path).Info("saving issue")
-
-			if _, err := os.Stat(magazine.Title); os.IsNotExist(err) {
-				if err := os.Mkdir(magazine.Title, 0755); err != nil {
-					return errors.Wrapf(err, "failed to create directory %s", magazine.Title)
+				if err != nil {
+					return err
 				}
-			}
 
-			if err := save(session, pages, issue.Password, path); err != nil {
-				return err
+				path := path.Join(magazine.Title, issue.Title+".pdf")
+
+				if _, err := os.Stat(path); err == nil {
+					log.WithFields(log.Fields{"magazine": magazine.Title, "issue": issue.Title}).Info("issue already downloaded")
+					return nil
+				}
+
+				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": issue.Title}).Info("downloading issue")
+				pages, err := downloadAllPages(ctx, issue)
+
+				if err != nil {
+					return errors.Wrapf(err, "failed to download %s", path)
+				}
+
+				log.WithField("path", path).Info("saving issue")
+
+				if _, err := os.Stat(magazine.Title); os.IsNotExist(err) {
+					if err := os.Mkdir(magazine.Title, 0755); err != nil {
+						return errors.Wrapf(err, "failed to create directory %s", magazine.Title)
+					}
+				}
+
+				if err := save(session, pages, issue.Password, path); err != nil {
+					return err
+				}
+
+				return nil
+			}()
+
+			if err != nil {
+				log.Error(err)
 			}
 		}
 	}
