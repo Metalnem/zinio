@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	baseURL     = "https://services.zinio.com/newsstandServices/"
-	httpTimeout = 5 * time.Second
+	baseURL        = "https://services.zinio.com/newsstandServices/"
+	httpTimeout    = 5 * time.Second
+	requestTimeout = time.Minute
 
 	deviceID         = "A6B50079-BE65-44D6-A961-8A184AA81077"
 	installationUUID = "84A8E36D-DF7F-4D7E-9824-F793AFB93207"
@@ -178,6 +179,9 @@ func makeRequest(p parameters) zinioServiceRequest {
 }
 
 func retry(ctx context.Context, query string, p parameters) (*zinioServiceResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+	defer cancel()
+
 	var resp *zinioServiceResponse
 	var err error
 
@@ -329,7 +333,7 @@ func (session *Session) GetIssue(ctx context.Context, magazine MagazineID, issue
 		issueID:   issue,
 	}
 
-	resp, err := post(ctx, "issueData", p)
+	resp, err := retry(ctx, "issueData", p)
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to download metadata for magazine %s, issue %s", magazine, issue)

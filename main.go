@@ -17,6 +17,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var (
+	downloadTimeout = 5 * time.Minute
+)
+
 func downloadPage(ctx context.Context, url string) (page, error) {
 	resp, err := ctxhttp.Get(ctx, http.DefaultClient, url)
 
@@ -36,6 +40,9 @@ func downloadPage(ctx context.Context, url string) (page, error) {
 }
 
 func downloadAllPages(ctx context.Context, issue Issue) ([]page, error) {
+	ctx, cancel := context.WithTimeout(ctx, downloadTimeout)
+	defer cancel()
+
 	var pages []page
 
 	for i := 0; i < issue.PageCount; i++ {
@@ -58,7 +65,7 @@ func downloadAllPages(ctx context.Context, issue Issue) ([]page, error) {
 }
 
 func downloadIssue(ctx context.Context, session *Session, issue Issue, path string) (err error) {
-	pages, err := downloadAllPages(context.Background(), issue)
+	pages, err := downloadAllPages(ctx, issue)
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to download %s", path)
@@ -168,8 +175,7 @@ func unlockAndMerge(pages []page, password []byte) (*pdf.PdfWriter, error) {
 }
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	ctx := context.Background()
 
 	login := os.Getenv("ZINIO_EMAIL")
 	password := os.Getenv("ZINIO_PASSWORD")
@@ -188,7 +194,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err = downloadAllIssues(context.Background(), session, magazines); err != nil {
+	if err = downloadAllIssues(ctx, session, magazines); err != nil {
 		log.Fatal(err)
 	}
 }
