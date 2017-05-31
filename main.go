@@ -23,7 +23,7 @@ import (
 var (
 	downloadTimeout = 5 * time.Minute
 
-	invalidChars = regexp.MustCompile("[^\\p{L}\\p{N}\\s'!&,!.@-]")
+	invalidChars = regexp.MustCompile("[^\\p{L}\\p{N}\\s'!&,.@-]")
 	whiteSpaces  = regexp.MustCompile("\\s+")
 )
 
@@ -83,38 +83,45 @@ func downloadAllPages(ctx context.Context, issue *Issue) ([]page, error) {
 
 func downloadAllIssues(ctx context.Context, session *Session, magazines []Magazine) error {
 	for _, magazine := range magazines {
+		dir := sanitize(magazine.Title)
+
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			if err := os.Mkdir(dir, 0755); err != nil {
+				log.Error(errors.Wrapf(err, "failed to create directory %s", magazine.Title))
+				continue
+			}
+		}
+
 		for _, metadata := range magazine.Issues {
-			dir := sanitize(magazine.Title)
 			file := sanitize(metadata.Title)
 			path := path.Join(dir, file+".pdf")
 
+			entry := log.WithFields(log.Fields{
+				"magazine": magazine.Title,
+				"issue":    metadata.Title,
+			})
+
 			if _, err := os.Stat(path); err == nil {
-				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": metadata.Title}).Info("issue already downloaded")
+				entry.Info("issue already downloaded")
 				continue
 			}
 
 			err := func() error {
-				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": metadata.Title}).Info("downloading issue metadata")
+				entry.Info("downloading issue metadata")
 				issue, err := session.GetIssue(ctx, magazine.ID, metadata.ID)
 
 				if err != nil {
 					return err
 				}
 
-				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": issue.Title}).Info("downloading issue")
+				entry.Info("downloading issue")
 				pages, err := downloadAllPages(ctx, issue)
 
 				if err != nil {
 					return errors.Wrapf(err, "failed to download %s %s", magazine.Title, metadata.Title)
 				}
 
-				if f, err := os.Stat(dir); (err == nil && !f.IsDir()) || os.IsNotExist(err) {
-					if err := os.Mkdir(dir, 0755); err != nil {
-						return errors.Wrapf(err, "failed to create directory %s", magazine.Title)
-					}
-				}
-
-				log.WithFields(log.Fields{"magazine": magazine.Title, "issue": metadata.Title}).Info("saving issue")
+				entry.Info("saving issue")
 
 				if err := save(session, pages, issue.Password, path); err != nil {
 					return err
