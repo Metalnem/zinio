@@ -4,9 +4,9 @@ This command line tool removes DRM from magazines in your digital Zinio library.
 
 ## Downloads
 
-[Windows](https://github.com/Metalnem/zinio/releases/download/v1.0.1/zinio-win64-1.0.1.zip)  
-[Mac OS X](https://github.com/Metalnem/zinio/releases/download/v1.0.1/zinio-darwin64-1.0.1.zip)  
-[Linux](https://github.com/Metalnem/zinio/releases/download/v1.0.1/zinio-linux64-1.0.1.zip)
+[Windows](https://github.com/Metalnem/zinio/releases/download/v1.0.2/zinio-win64-1.0.2.zip)  
+[Mac OS X](https://github.com/Metalnem/zinio/releases/download/v1.0.2/zinio-darwin64-1.0.2.zip)  
+[Linux](https://github.com/Metalnem/zinio/releases/download/v1.0.2/zinio-linux64-1.0.2.zip)
 
 
 ## Usage
