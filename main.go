@@ -197,13 +197,15 @@ func unlockAndMerge(pages []page, password []byte) (*pdf.PdfWriter, error) {
 		}
 
 		for i := 0; i < numPages; i++ {
-			page, err := r.GetPage(i + 1)
+			page, err := r.GetPageAsPdfPage(i + 1)
 
 			if err != nil {
 				return nil, err
 			}
 
-			if err = w.AddPage(page); err != nil {
+			page.Annots = nil
+
+			if err = w.AddPage(page.GetPageAsIndirectObject()); err != nil {
 				return nil, err
 			}
 		}
