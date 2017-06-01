@@ -122,8 +122,9 @@ func downloadAllIssues(ctx context.Context, session *Session, magazines []Magazi
 				}
 
 				entry.Info("saving issue")
+				err = save(session, pages, issue.Password, path)
 
-				if err := save(session, pages, issue.Password, path); err != nil {
+				if err != nil {
 					return err
 				}
 
