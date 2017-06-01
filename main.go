@@ -140,31 +140,27 @@ func downloadAllIssues(ctx context.Context, session *Session, magazines []Magazi
 	return nil
 }
 
-func save(session *Session, pages []page, password string, path string) (err error) {
+func save(session *Session, pages []page, password string, path string) error {
 	pdf, err := unlockAndMerge(pages, []byte(password))
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to unlock and merge pages for %s", path)
 	}
 
-	temp := path + ".part"
-	file, err := os.Create(temp)
+	file, err := ioutil.TempFile("", "")
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to create %s", path)
 	}
 
-	defer func() {
-		if cerr := file.Close(); cerr != nil && err == nil {
-			err = cerr
-		}
-	}()
+	err = pdf.Write(file)
+	cerr := file.Close()
 
-	if err := pdf.Write(file); err != nil {
+	if err != nil || cerr != nil {
 		return errors.Wrapf(err, "failed to save %s", path)
 	}
 
-	if err := os.Rename(temp, path); err != nil {
+	if err := os.Rename(file.Name(), path); err != nil {
 		return errors.Wrapf(err, "failed to save %s", path)
 	}
 
