@@ -102,9 +102,8 @@ type zinioServiceRequest struct {
 			PlatformDescription string `xml:"platformDescription"`
 		} `xml:"device"`
 		Application struct {
-			ApplicationName    string    `xml:"applicationName"`
-			ApplicationVersion string    `xml:"applicationVersion"`
-			Versions           []version `xml:"versions>version"`
+			ApplicationName string    `xml:"applicationName"`
+			Versions        []version `xml:"versions>version"`
 		} `xml:"application"`
 	} `xml:"requestHeader"`
 	LibraryIssueDataRequest *libraryIssueDataRequest `xml:"libraryIssueDataRequest,omitempty"`
