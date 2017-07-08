@@ -18,3 +18,14 @@ ETag: "0194c3d946f8fe2e5d54131099cae4d8f"
 X-ETag: "0194c3d946f8fe2e5d54131099cae4d8f"
 
 {"data":[{"id":"e847262169","issue":{"id":"416413259","name":"May 2017","title":"May 2017"},"product":{"id":"373124878","name":"Maxim"}},{"id":"e849027487","issue":{"id":"416397519","name":"December 2016","title":"December 2016"},"product":{"id":"373124878","name":"Maxim"}},{"id":"e860365781","issue":{"id":"416286100","name":"November 22, 2013","title":"November 22, 2013"},"product":{"id":"500644713","name":"AppleMagazine"}}]}
+
+GET /api/issues/416397519/contentDescriptorSvg HTTP/1.1
+Host: www.zinio.com
+Authorization: bearer 655a0041-e257-4fd0-b2c7-7d42a471142e
+Content-Type: application/json
+
+HTTP/1.1 200 OK
+ETag: "0a7f785afe675e6a6cd112ee510d5c086"
+X-ETag: "0a7f785afe675e6a6cd112ee510d5c086"
+
+{"id":"416413259100018","data":{"singleIssue":{"pubId":"373124878","pubName":"Maxim","issueId":"416413259","issueTitle":"May 2017","numberOfPages":"4","hostName":"imgs.zinio.com","issueAssetDir":"/repository/373124878/416413259/","pages":[{"url":"SVG/page0.svg","number":0,"folio":"C4","bookmark":"Backcover","width":"648","height":"783"},{"url":"SVG/page1.svg","number":1,"folio":"Cover","bookmark":"Cover","width":"648","height":"783"},{"url":"SVG/page2.svg","number":2,"folio":"C2","width":"648","height":"783"},{"url":"SVG/page3.svg","number":3,"folio":"1","width":"648","height":"783"}]}}}
