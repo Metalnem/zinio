@@ -1,0 +1,20 @@
+POST /v1/authenticate HTTP/1.1
+Host: auth.zinio.com
+Content-Type: application/json
+
+{"client_id":"aGsFThOTflYqlDHSYsqP","client_secret":"9ZHSxpw8wRPXA8T4yOUWrmXUQuaTdEH26EsuoSjzfuwyFKj37J","username":"user@example.org","password":"secret123","grant_type":"password"}
+
+HTTP/1.1 200 OK
+
+{"access_token":"655a0041-e257-4fd0-b2c7-7d42a471142e","token_type":"bearer","expires_in":999999999,"user_id":"8751702194"}
+
+GET /api/users/self/library?sort=lastModified&lastModified.dir=desc&size=100000&nolimit=true HTTP/1.1
+Host: www.zinio.com
+Authorization: bearer 655a0041-e257-4fd0-b2c7-7d42a471142e
+Content-Type: application/json
+
+HTTP/1.1 200 OK
+ETag: "0194c3d946f8fe2e5d54131099cae4d8f"
+X-ETag: "0194c3d946f8fe2e5d54131099cae4d8f"
+
+{"data":[{"id":"e847262169","issue":{"id":"416413259","name":"May 2017","title":"May 2017"},"product":{"id":"373124878","name":"Maxim"}},{"id":"e849027487","issue":{"id":"416397519","name":"December 2016","title":"December 2016"},"product":{"id":"373124878","name":"Maxim"}},{"id":"e860365781","issue":{"id":"416286100","name":"November 22, 2013","title":"November 22, 2013"},"product":{"id":"500644713","name":"AppleMagazine"}}]}
