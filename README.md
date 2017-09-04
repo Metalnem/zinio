@@ -4,6 +4,22 @@ This command line tool removes DRM from magazines in your digital Zinio library.
 For more details visit my blog post
 [Removing Zinio DRM](https://mijailovic.net/2017/06/06/removing-zinio-drm/).
 
+## Frequently Asked Questions
+
+#### Do I have to download the whole library every time?
+
+No, you don't—this tool skips issues that you have
+already downloaded. It will only download the magazines
+that are not present in your download folder.
+
+#### Can I download a specific magazine issue?
+
+I agree that this would be a nice feature, but I will
+not implement it, mostly because it would be complicated
+to use from the command line. Again, you don't have
+to download the whole library each time, so this feature
+is not essential in my opinion.
+
 ## Downloads
 
 [Windows](https://github.com/Metalnem/zinio/releases/download/v1.0.3/zinio-win64-1.0.3.zip)  
