@@ -1,4 +1,10 @@
 language: go
+
 go:
-  - 1.8
-sudo: false
+  - 1.9
+before_install:
+  - go get github.com/golang/dep/...
+install:
+  - dep ensure
+script:
+  - go test ./...
