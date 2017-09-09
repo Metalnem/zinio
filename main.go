@@ -76,6 +76,10 @@ func downloadAllPages(ctx context.Context, issue *Issue) ([]page, error) {
 		pages = append(pages, page)
 	}
 
+	if len(pages) > 0 {
+		pages = append(pages[1:], pages[0])
+	}
+
 	return pages, nil
 }
 
