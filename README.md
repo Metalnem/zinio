@@ -22,9 +22,9 @@ is not essential in my opinion.
 
 ## Downloads
 
-[Windows](https://github.com/Metalnem/zinio/releases/download/v1.0.3/zinio-win64-1.0.3.zip)  
-[Mac OS X](https://github.com/Metalnem/zinio/releases/download/v1.0.3/zinio-darwin64-1.0.3.zip)  
-[Linux](https://github.com/Metalnem/zinio/releases/download/v1.0.3/zinio-linux64-1.0.3.zip)
+[Windows](https://github.com/Metalnem/zinio/releases/download/v1.1.0/zinio-win64-1.1.0.zip)  
+[Mac OS X](https://github.com/Metalnem/zinio/releases/download/v1.1.0/zinio-darwin64-1.1.0.zip)  
+[Linux](https://github.com/Metalnem/zinio/releases/download/v1.1.0/zinio-linux64-1.1.0.zip)
 
 
 ## Usage
