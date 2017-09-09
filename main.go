@@ -21,8 +21,6 @@ import (
 )
 
 var (
-	downloadTimeout = 5 * time.Minute
-
 	invalidChars = regexp.MustCompile("[^\\p{L}\\p{N}\\s'!&,.@-]")
 	whiteSpaces  = regexp.MustCompile("\\s+")
 )
@@ -39,6 +37,9 @@ func sanitize(name string) string {
 }
 
 func downloadPage(ctx context.Context, url string) (page, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	resp, err := ctxhttp.Get(ctx, http.DefaultClient, url)
 
 	if err != nil {
@@ -57,9 +58,6 @@ func downloadPage(ctx context.Context, url string) (page, error) {
 }
 
 func downloadAllPages(ctx context.Context, issue *Issue) ([]page, error) {
-	ctx, cancel := context.WithTimeout(ctx, downloadTimeout)
-	defer cancel()
-
 	var pages []page
 
 	for i := 0; i < issue.PageCount; i++ {
