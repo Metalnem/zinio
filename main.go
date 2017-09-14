@@ -149,7 +149,8 @@ func save(session *Session, pages []page, password string, path string) error {
 		return errors.Wrapf(err, "failed to unlock and merge pages for %s", path)
 	}
 
-	file, err := ioutil.TempFile("", "")
+	temp := path + ".part"
+	file, err := os.Create(temp)
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to create %s", path)
@@ -162,11 +163,7 @@ func save(session *Session, pages []page, password string, path string) error {
 		return errors.Wrapf(err, "failed to save %s", path)
 	}
 
-	if err := os.Rename(file.Name(), path); err != nil {
-		return errors.Wrapf(err, "failed to save %s", path)
-	}
-
-	return nil
+	return errors.Wrapf(os.Rename(temp, path), "failed to save %s", path)
 }
 
 func unlockAndMerge(pages []page, password []byte) (*pdf.PdfWriter, error) {
