@@ -20,6 +20,18 @@ to use from the command line. Again, you don't have
 to download the whole library each time, so this feature
 is not essential in my opinion.
 
+#### How can I build the application from source?
+
+Zinio DRM removal tool is using
+[dep](https://github.com/golang/dep) for managing
+dependencies. If you want to build it from source,
+you have to install dep first, and then run the
+following command in the **zinio** directory:
+
+```
+$ dep ensure
+```
+
 ## Downloads
 
 [Windows](https://github.com/Metalnem/zinio/releases/download/v1.1.0/zinio-win64-1.1.0.zip)  
